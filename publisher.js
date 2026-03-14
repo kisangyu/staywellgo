@@ -76,12 +76,16 @@ async function getCategoryId(categoryName) {
       { headers: { "Content-Type": "text/xml" } }
     );
 
-    const matches = [...response.data.matchAll(/<name>([^<]+)<\/name>[\s\S]*?<term_id>(\d+)<\/term_id>/g)];
-    for (const match of matches) {
-      if (match[1].trim() === categoryName) {
-        return parseInt(match[2]);
+    // term_id 먼저 찾고 근처의 name 매칭
+    const termBlocks = response.data.split("<struct>");
+    for (const block of termBlocks) {
+      const nameMatch = block.match(/<name>name<\/name>[\s\S]*?<string>([^<]+)<\/string>/);
+      const idMatch = block.match(/<name>term_id<\/name>[\s\S]*?<string>(\d+)<\/string>/);
+      if (nameMatch && idMatch && nameMatch[1].trim() === categoryName) {
+        return parseInt(idMatch[1]);
       }
     }
+    console.log("카테고리를 찾지 못함, 기본 카테고리로 포스팅:", categoryName);
     return null;
   } catch (error) {
     console.error("카테고리 ID 조회 오류:", error.message);
@@ -134,8 +138,8 @@ async function publishPost(article, keyword = "") {
       return { success: false, error: response.data };
     }
   } catch (error) {
-    console.error("포스팅 오류:", error.message);
-    return { success: false, error: error.message };
+    console.error("포스팅 오류:", error.response?.data || error.message);
+    return { success: false, error: error.response?.data || error.message };
   }
 }
 
