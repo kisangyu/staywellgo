@@ -22,15 +22,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Create .env file
-        run: |
-          echo "WP_URL=${{ secrets.WP_URL }}" >> .env
-          echo "WP_USERNAME=${{ secrets.WP_USERNAME }}" >> .env
-          echo "WP_APP_PASSWORD=${{ secrets.WP_APP_PASSWORD }}" >> .env
-          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
-          echo "POSTS_PER_DAY=2" >> .env
-          echo "POST_HOUR_1=8" >> .env
-          echo "POST_HOUR_2=20" >> .env
-
       - name: Run auto post
         run: node run-once.js
+        env:
+          WP_URL: ${{ secrets.WP_URL }}
+          WP_USERNAME: ${{ secrets.WP_USERNAME }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          POSTS_PER_DAY: 2
+          POST_HOUR_1: 8
+          POST_HOUR_2: 20
