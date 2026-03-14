@@ -41,7 +41,7 @@ async function main() {
   console.log(`✅ 글 생성 완료: ${article.title}`);
 
   console.log("🌐 WordPress 업로드 중...");
-  const result = await publishPost(article, keyword);
+  const result = await publishPost(article, keyword, true);
 
   if (result.success) {
     console.log(`✅ 포스팅 성공! ID: ${result.postId}`);

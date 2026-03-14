@@ -2,7 +2,7 @@
 const axios = require("axios");
 require("dotenv").config();
 
-// 키워드 → 카테고리 자동 분류
+// 키워드 → 카테고리 자동 분류 (영어)
 const CATEGORY_MAP = {
   "Sleep & Recovery": [
     "sleep", "insomnia", "rest", "fatigue", "tired", "melatonin", "tea for sleep", "better sleep"
@@ -23,6 +23,25 @@ const CATEGORY_MAP = {
   ],
 };
 
+// 키워드 → 카테고리 자동 분류 (한국어 - yukisang.pro)
+const CATEGORY_MAP_KR = {
+  "건강 & 식단": [
+    "혈압", "다이어트", "면역력", "콜레스테롤", "혈당", "장 건강", "빈혈",
+    "유산균", "비타민", "오메가3", "마그네슘", "단백질", "멀티비타민", "홍삼",
+    "영양제", "식단", "음식", "건강"
+  ],
+  "생활 꿀팁": [
+    "운동", "숙면", "피로", "두통", "목 결림", "허리", "눈 피로", "스트레칭",
+    "꿀팁", "방법", "생활"
+  ],
+  "여행 & 맛집": [
+    "맛집", "여행", "제주도", "서울", "국내", "숙소", "코스"
+  ],
+  "IT & 기기": [
+    "이어폰", "스마트워치", "공기청정기", "안마기", "기기", "추천 제품"
+  ],
+};
+
 function getCategoryName(keyword) {
   const lower = keyword.toLowerCase();
   for (const [category, terms] of Object.entries(CATEGORY_MAP)) {
@@ -31,6 +50,15 @@ function getCategoryName(keyword) {
     }
   }
   return "General Health";
+}
+
+function getCategoryNameKR(keyword) {
+  for (const [category, terms] of Object.entries(CATEGORY_MAP_KR)) {
+    if (terms.some((term) => keyword.includes(term))) {
+      return category;
+    }
+  }
+  return "생활 꿀팁"; // 기본 카테고리
 }
 
 function buildXmlRpcRequest(method, params) {
@@ -111,8 +139,10 @@ async function getCategoryIdXMLRPC(categoryName) {
   }
 }
 
-async function publishPostREST(article, keyword = "") {
-  const categoryName = getCategoryName(keyword || article.title);
+async function publishPostREST(article, keyword = "", isKorean = false) {
+  const categoryName = isKorean
+    ? getCategoryNameKR(keyword || article.title)
+    : getCategoryName(keyword || article.title);
   console.log(`📂 카테고리: ${categoryName}`);
   const categoryId = await getCategoryIdREST(categoryName);
 
@@ -125,6 +155,10 @@ async function publishPostREST(article, keyword = "") {
       status: "publish",
       excerpt: article.meta,
       categories: categoryId ? [categoryId] : [],
+      meta: {
+        _yoast_wpseo_metadesc: article.meta || "",
+        _yoast_wpseo_focuskw: keyword || "",
+      },
     },
     { headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" } }
   );
@@ -175,11 +209,11 @@ async function publishPostXMLRPC(article, keyword = "") {
   }
 }
 
-async function publishPost(article, keyword = "") {
+async function publishPost(article, keyword = "", isKorean = false) {
   try {
     if (isAppPassword()) {
       console.log("🔑 REST API 방식으로 포스팅...");
-      return await publishPostREST(article, keyword);
+      return await publishPostREST(article, keyword, isKorean);
     } else {
       console.log("🔑 XML-RPC 방식으로 포스팅...");
       return await publishPostXMLRPC(article, keyword);
