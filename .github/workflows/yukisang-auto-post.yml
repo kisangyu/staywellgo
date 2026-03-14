@@ -23,7 +23,7 @@ jobs:
         run: npm install
 
       - name: Run auto post
-        run: node run-once.js
+        run: node run-once-kr.js
         env:
           WP_URL: ${{ secrets.YK_WP_URL }}
           WP_USERNAME: ${{ secrets.YK_WP_USERNAME }}
