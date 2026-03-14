@@ -61,7 +61,27 @@ function buildXmlRpcRequest(method, params) {
   return `<?xml version="1.0"?><methodCall><methodName>${method}</methodName><params>${paramXml}</params></methodCall>`;
 }
 
-async function getCategoryId(categoryName) {
+// Application Password 감지 (공백 포함 = REST API, 없으면 XML-RPC)
+function isAppPassword() {
+  return process.env.WP_APP_PASSWORD && process.env.WP_APP_PASSWORD.includes(" ");
+}
+
+async function getCategoryIdREST(categoryName) {
+  try {
+    const auth = Buffer.from(`${process.env.WP_USERNAME}:${process.env.WP_APP_PASSWORD}`).toString("base64");
+    const response = await axios.get(
+      `${process.env.WP_URL}/wp-json/wp/v2/categories?per_page=100`,
+      { headers: { Authorization: `Basic ${auth}` } }
+    );
+    const cat = response.data.find(c => c.name === categoryName);
+    return cat ? cat.id : null;
+  } catch (error) {
+    console.error("카테고리 ID 조회 오류:", error.message);
+    return null;
+  }
+}
+
+async function getCategoryIdXMLRPC(categoryName) {
   try {
     const xml = buildXmlRpcRequest("wp.getTerms", [
       1,
@@ -76,7 +96,6 @@ async function getCategoryId(categoryName) {
       { headers: { "Content-Type": "text/xml" } }
     );
 
-    // term_id 먼저 찾고 근처의 name 매칭
     const termBlocks = response.data.split("<struct>");
     for (const block of termBlocks) {
       const nameMatch = block.match(/<name>name<\/name>[\s\S]*?<string>([^<]+)<\/string>/);
@@ -85,7 +104,6 @@ async function getCategoryId(categoryName) {
         return parseInt(idMatch[1]);
       }
     }
-    console.log("카테고리를 찾지 못함, 기본 카테고리로 포스팅:", categoryName);
     return null;
   } catch (error) {
     console.error("카테고리 ID 조회 오류:", error.message);
@@ -93,49 +111,78 @@ async function getCategoryId(categoryName) {
   }
 }
 
+async function publishPostREST(article, keyword = "") {
+  const categoryName = getCategoryName(keyword || article.title);
+  console.log(`📂 카테고리: ${categoryName}`);
+  const categoryId = await getCategoryIdREST(categoryName);
+
+  const auth = Buffer.from(`${process.env.WP_USERNAME}:${process.env.WP_APP_PASSWORD}`).toString("base64");
+  const response = await axios.post(
+    `${process.env.WP_URL}/wp-json/wp/v2/posts`,
+    {
+      title: article.title,
+      content: article.content,
+      status: "publish",
+      excerpt: article.meta,
+      categories: categoryId ? [categoryId] : [],
+    },
+    { headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" } }
+  );
+
+  return {
+    success: true,
+    postId: response.data.id,
+    category: categoryName,
+    url: response.data.link,
+  };
+}
+
+async function publishPostXMLRPC(article, keyword = "") {
+  const categoryName = getCategoryName(keyword || article.title);
+  console.log(`📂 카테고리: ${categoryName}`);
+  const categoryId = await getCategoryIdXMLRPC(categoryName);
+
+  const postData = {
+    post_title: article.title,
+    post_content: article.content,
+    post_status: "publish",
+    post_excerpt: article.meta,
+    post_type: "post",
+  };
+
+  if (categoryId) {
+    postData.terms = { category: [categoryId] };
+  }
+
+  const xml = buildXmlRpcRequest("wp.newPost", [
+    1,
+    process.env.WP_USERNAME,
+    process.env.WP_APP_PASSWORD,
+    postData,
+  ]);
+
+  const response = await axios.post(
+    `${process.env.WP_URL}/xmlrpc.php`,
+    xml,
+    { headers: { "Content-Type": "text/xml" } }
+  );
+
+  const postId = response.data.match(/<string>\s*(\d+)\s*<\/string>/)?.[1];
+  if (postId) {
+    return { success: true, postId, category: categoryName, url: `${process.env.WP_URL}/?p=${postId}` };
+  } else {
+    return { success: false, error: response.data };
+  }
+}
+
 async function publishPost(article, keyword = "") {
   try {
-    // 카테고리 자동 분류
-    const categoryName = getCategoryName(keyword || article.title);
-    console.log(`📂 카테고리: ${categoryName}`);
-
-    const categoryId = await getCategoryId(categoryName);
-
-    const postData = {
-      post_title: article.title,
-      post_content: article.content,
-      post_status: "publish",
-      post_excerpt: article.meta,
-      post_type: "post",
-    };
-
-    if (categoryId) {
-      postData.terms = { category: [categoryId] };
-    }
-
-    const xml = buildXmlRpcRequest("wp.newPost", [
-      1,
-      process.env.WP_USERNAME,
-      process.env.WP_APP_PASSWORD,
-      postData,
-    ]);
-
-    const response = await axios.post(
-      `${process.env.WP_URL}/xmlrpc.php`,
-      xml,
-      { headers: { "Content-Type": "text/xml" } }
-    );
-
-    const postId = response.data.match(/<string>\s*(\d+)\s*<\/string>/)?.[1];
-    if (postId) {
-      return {
-        success: true,
-        postId,
-        category: categoryName,
-        url: `${process.env.WP_URL}/?p=${postId}`,
-      };
+    if (isAppPassword()) {
+      console.log("🔑 REST API 방식으로 포스팅...");
+      return await publishPostREST(article, keyword);
     } else {
-      return { success: false, error: response.data };
+      console.log("🔑 XML-RPC 방식으로 포스팅...");
+      return await publishPostXMLRPC(article, keyword);
     }
   } catch (error) {
     console.error("포스팅 오류:", error.response?.data || error.message);
