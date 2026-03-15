@@ -111,7 +111,13 @@ async function generateImage(keyword, title) {
     const mimeType = imgRes.headers['content-type']?.split(';')[0] || 'image/jpeg';
     const data = Buffer.from(imgRes.data).toString('base64');
     console.log(`✅ 이미지 준비 완료 (${mimeType})`);
-    return { data, mimeType };
+    return {
+      data,
+      mimeType,
+      pexelsUrl: imageUrl,
+      photographer: photo.photographer,
+      photographerUrl: photo.photographer_url,
+    };
   } catch (error) {
     console.error(`❌ 이미지 오류 (건너뜀): ${error.message}`);
     return null;
