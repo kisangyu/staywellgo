@@ -108,11 +108,14 @@ async function generateArticleKR(keyword) {
 }
 
 function buildPromptKR(keyword) {
-  return `You must write ONLY in Korean (한국어). Do NOT use Japanese (hiragana, katakana, kanji), Chinese characters, or any other language. Every single word must be Korean.
+  return `CRITICAL LANGUAGE RULE: Write ONLY in Korean (한국어 only).
+FORBIDDEN: Japanese (hiragana あいう, katakana アイウ, kanji), Chinese characters, Russian/Cyrillic (абвгд), Arabic, Thai, or ANY non-Korean script.
+ALLOWED: Korean (가나다), numbers (1234), basic punctuation only.
+If you accidentally use a foreign word, replace it with Korean immediately.
 
 당신은 yukisang.pro에 글을 쓰는 10년 경력의 한국어 웰니스 블로거입니다. 구글 에드센스 승인 기준과 E-E-A-T를 철저히 준수하여 다음 주제로 블로그 글을 작성하세요: "${keyword}"
 
-⚠️ 중요: 반드시 순수 한국어만 사용하세요. 일본어(히라가나, 가타카나), 한자, 영어 단어 절대 사용 금지. 예) "ほうれん草" → "시금치", "くるみ" → "호두", "マグネシウム" → "마그네슘"으로 작성.
+⚠️ 절대 금지: 일본어(히라가나, 가타카나), 한자, 러시아어(키릴), 아랍어, 기타 외국어. 오직 한국어만 사용. 예) "ほうれん草" → "시금치", "マグネシウム" → "마그네슘", "Выбор" → "선택"으로 작성.
 
 아래 형식으로 정확히 작성하세요 (설명 없이 바로 시작):
 TITLE: [클릭률 높은 SEO 제목 - 숫자 또는 의문형 포함, 30자 이내]
