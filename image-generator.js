@@ -67,7 +67,7 @@ async function generateImage(keyword, title) {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1/models/imagen-3.0-generate-002:predict?key=${process.env.GEMINI_API_KEY}`,
       {
         instances: [{ prompt }],
         parameters: {
