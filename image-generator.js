@@ -57,48 +57,26 @@ function buildImagePrompt(keyword, title) {
 }
 
 async function generateImage(keyword, title) {
-  if (!process.env.GEMINI_API_KEY) {
-    console.log('⚠️  GEMINI_API_KEY 없음 - 이미지 생성 건너뜀');
-    return null;
-  }
-
   const prompt = buildImagePrompt(keyword, title);
-  console.log(`🎨 Gemini 이미지 생성 중: "${title.substring(0, 50)}..."`);
+  console.log(`🎨 이미지 생성 중: "${title.substring(0, 50)}..."`);
 
   try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE', 'TEXT'] },
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 90000,
-      }
-    );
+    const encoded = encodeURIComponent(prompt.substring(0, 500));
+    const url = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${Date.now()}`;
 
-    const parts = response.data?.candidates?.[0]?.content?.parts;
-    const imagePart = parts?.find(p => p.inlineData?.mimeType?.startsWith('image/'));
+    const response = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: 120000,
+    });
 
-    if (!imagePart) {
-      console.log('⚠️  Gemini 이미지 데이터 없음 - 포스팅은 계속 진행');
-      return null;
-    }
+    const mimeType = response.headers['content-type']?.split(';')[0] || 'image/jpeg';
+    const data = Buffer.from(response.data).toString('base64');
 
-    const mimeType = imagePart.inlineData.mimeType;
     console.log(`✅ 이미지 생성 완료 (${mimeType})`);
-    return {
-      data: imagePart.inlineData.data,
-      mimeType,
-    };
+    return { data, mimeType };
   } catch (error) {
-    const msg =
-      error.response?.data?.error?.message ||
-      error.response?.data ||
-      error.message;
-    console.error(`❌ 이미지 생성 오류 (건너뜀): ${msg}`);
-    return null; // 이미지 실패해도 포스팅은 계속
+    console.error(`❌ 이미지 생성 오류 (건너뜀): ${error.message}`);
+    return null;
   }
 }
 
