@@ -38,28 +38,40 @@ const TOPIC_VISUALS = {
 function buildSearchQuery(keyword, title) {
   const text = (keyword + ' ' + title).toLowerCase();
   const map = [
-    ['sleep|숙면|불면', 'sleep wellness bedroom'],
-    ['gut|장 건강|유산균|probiotic', 'healthy fermented food'],
-    ['stress|불안|anxiety', 'meditation calm wellness'],
-    ['cholesterol|콜레스테롤|heart', 'heart healthy food'],
-    ['blood pressure|혈압', 'healthy vegetables nutrition'],
-    ['immune|면역', 'healthy food vitamins'],
-    ['diet|다이어트|weight|체중', 'healthy meal diet food'],
-    ['vitamin|비타민|supplement|영양제', 'vitamins supplements health'],
-    ['exercise|운동|workout|fitness', 'exercise fitness yoga'],
-    ['back|허리|neck|목|shoulder|어깨', 'stretching yoga back pain'],
-    ['skin|피부', 'skincare beauty wellness'],
-    ['hair|탈모', 'hair care health'],
-    ['meal prep|식단', 'meal prep healthy food'],
-    ['공기청정기|air purifier', 'air purifier home'],
-    ['이어폰|earphone|headphone', 'wireless earphones'],
-    ['스마트워치|smartwatch', 'smartwatch fitness'],
-    ['여행|travel', 'travel nature landscape'],
+    ['빈혈|anemia|iron deficiency', 'spinach iron rich food red meat'],
+    ['sleep|숙면|불면|melatonin', 'peaceful bedroom sleep white pillow'],
+    ['gut|장 건강|유산균|probiotic', 'yogurt fermented kimchi healthy gut'],
+    ['stress|불안|anxiety|긴장', 'meditation calm herbal tea relax'],
+    ['cholesterol|콜레스테롤', 'avocado salmon heart healthy food'],
+    ['blood pressure|혈압', 'fresh vegetables salad healthy diet'],
+    ['immune|면역력|면역', 'citrus fruit vitamin c immune boost'],
+    ['diet|다이어트|weight loss|체중', 'healthy salad meal diet vegetables'],
+    ['vitamin|비타민d|비타민', 'colorful fruits vegetables vitamins'],
+    ['supplement|영양제|magnesium|마그네슘', 'supplements capsules health vitamins'],
+    ['omega|오메가3', 'salmon fish omega healthy food'],
+    ['protein|단백질|프로틴', 'chicken egg protein healthy meal'],
+    ['홍삼|red ginseng|ginseng', 'korean ginseng tea health'],
+    ['exercise|운동|workout|fitness|헬스', 'workout exercise gym fitness'],
+    ['yoga|요가|stretch|스트레칭', 'yoga stretching mat exercise'],
+    ['back|허리|요통|spine', 'back pain stretching posture'],
+    ['neck|목|shoulder|어깨', 'neck shoulder stretching office'],
+    ['skin|피부|미백', 'skincare face beauty natural'],
+    ['hair|탈모', 'hair care healthy scalp'],
+    ['cholesterol|콜레스테롤', 'heart healthy omega food'],
+    ['diabetes|혈당|당뇨', 'low sugar healthy food nutrition'],
+    ['headache|두통', 'headache stress relief calm'],
+    ['eye|눈 피로|시력', 'eye care screen fatigue rest'],
+    ['meal prep|식단|recipe', 'meal prep healthy food container'],
+    ['air purifier|공기청정기', 'air purifier clean home'],
+    ['earphone|이어폰|headphone', 'wireless earphones music'],
+    ['smartwatch|스마트워치', 'smartwatch fitness tracker'],
+    ['travel|여행|제주|서울', 'travel nature landscape beautiful'],
+    ['massage|안마|마사지', 'massage relaxation wellness spa'],
   ];
   for (const [pattern, query] of map) {
-    if (new RegExp(pattern).test(text)) return query;
+    if (new RegExp(pattern, 'i').test(text)) return query;
   }
-  return 'wellness health lifestyle';
+  return 'healthy food nutrition wellness';
 }
 
 async function generateImage(keyword, title) {
