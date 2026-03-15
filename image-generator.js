@@ -34,58 +34,74 @@ const TOPIC_VISUALS = {
   면역:         'vibrant immune-boosting foods with Korean ingredients: red ginseng, mushrooms, citrus in bright setting',
 };
 
-function buildImagePrompt(keyword, title) {
-  const searchText = (keyword + ' ' + title).toLowerCase();
-
-  for (const [key, visual] of Object.entries(TOPIC_VISUALS)) {
-    if (searchText.includes(key.toLowerCase())) {
-      return (
-        `Photorealistic professional wellness blog photography, ${visual}, ` +
-        `vibrant colors, no text overlay, no watermark, no logos, ` +
-        `16:9 aspect ratio, professional lifestyle and food photography style, ` +
-        `bright natural lighting, clean modern composition, high resolution`
-      );
-    }
+// 키워드 → Pexels 검색어 매핑
+function buildSearchQuery(keyword, title) {
+  const text = (keyword + ' ' + title).toLowerCase();
+  const map = [
+    ['sleep|숙면|불면', 'sleep wellness bedroom'],
+    ['gut|장 건강|유산균|probiotic', 'healthy fermented food'],
+    ['stress|불안|anxiety', 'meditation calm wellness'],
+    ['cholesterol|콜레스테롤|heart', 'heart healthy food'],
+    ['blood pressure|혈압', 'healthy vegetables nutrition'],
+    ['immune|면역', 'healthy food vitamins'],
+    ['diet|다이어트|weight|체중', 'healthy meal diet food'],
+    ['vitamin|비타민|supplement|영양제', 'vitamins supplements health'],
+    ['exercise|운동|workout|fitness', 'exercise fitness yoga'],
+    ['back|허리|neck|목|shoulder|어깨', 'stretching yoga back pain'],
+    ['skin|피부', 'skincare beauty wellness'],
+    ['hair|탈모', 'hair care health'],
+    ['meal prep|식단', 'meal prep healthy food'],
+    ['공기청정기|air purifier', 'air purifier home'],
+    ['이어폰|earphone|headphone', 'wireless earphones'],
+    ['스마트워치|smartwatch', 'smartwatch fitness'],
+    ['여행|travel', 'travel nature landscape'],
+  ];
+  for (const [pattern, query] of map) {
+    if (new RegExp(pattern).test(text)) return query;
   }
-
-  // 매칭 없으면 제목 기반 범용 프롬프트
-  return (
-    `Photorealistic professional wellness blog photography for article about "${title}", ` +
-    `healthy lifestyle, natural wellness, vibrant fresh colors, no text overlay, no watermark, ` +
-    `16:9 aspect ratio, bright natural lighting, clean modern composition, high resolution`
-  );
+  return 'wellness health lifestyle';
 }
 
 async function generateImage(keyword, title) {
-  if (!process.env.HF_TOKEN) {
-    console.log('⚠️  HF_TOKEN 없음 - 이미지 생성 건너뜀');
+  if (!process.env.PEXELS_API_KEY) {
+    console.log('⚠️  PEXELS_API_KEY 없음 - 이미지 생성 건너뜀');
     return null;
   }
 
-  const prompt = buildImagePrompt(keyword, title);
-  console.log(`🎨 이미지 생성 중: "${title.substring(0, 50)}..."`);
+  const query = buildSearchQuery(keyword, title);
+  console.log(`🎨 이미지 검색 중: "${query}"`);
 
   try {
-    const response = await axios.post(
-      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
-      { inputs: prompt.substring(0, 500) },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.HF_TOKEN}`,
-          'Content-Type': 'application/json',
-          Accept: 'image/jpeg',
-        },
-        responseType: 'arraybuffer',
-        timeout: 120000,
-      }
-    );
+    // 1. Pexels에서 사진 검색
+    const searchRes = await axios.get('https://api.pexels.com/v1/search', {
+      params: { query, per_page: 5, orientation: 'landscape' },
+      headers: { Authorization: process.env.PEXELS_API_KEY },
+      timeout: 30000,
+    });
 
-    const mimeType = 'image/jpeg';
-    const data = Buffer.from(response.data).toString('base64');
-    console.log(`✅ 이미지 생성 완료 (${mimeType})`);
+    const photos = searchRes.data?.photos;
+    if (!photos?.length) {
+      console.log('⚠️  Pexels 검색 결과 없음');
+      return null;
+    }
+
+    // 랜덤 선택
+    const photo = photos[Math.floor(Math.random() * photos.length)];
+    const imageUrl = photo.src.large2x || photo.src.large;
+    console.log(`📸 사진 다운로드 중: ${photo.photographer}`);
+
+    // 2. 이미지 다운로드
+    const imgRes = await axios.get(imageUrl, {
+      responseType: 'arraybuffer',
+      timeout: 60000,
+    });
+
+    const mimeType = imgRes.headers['content-type']?.split(';')[0] || 'image/jpeg';
+    const data = Buffer.from(imgRes.data).toString('base64');
+    console.log(`✅ 이미지 준비 완료 (${mimeType})`);
     return { data, mimeType };
   } catch (error) {
-    console.error(`❌ 이미지 생성 오류 (건너뜀): ${error.message}`);
+    console.error(`❌ 이미지 오류 (건너뜀): ${error.message}`);
     return null;
   }
 }
