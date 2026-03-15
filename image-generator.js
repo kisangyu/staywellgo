@@ -60,8 +60,11 @@ async function generateImage(keyword, title) {
   const prompt = buildImagePrompt(keyword, title);
   console.log(`🎨 이미지 생성 중: "${title.substring(0, 50)}..."`);
 
+  // 프롬프트 핵심어만 추출 (첫 번째 쉼표까지)
+  const shortPrompt = prompt.split(',').slice(0, 2).join(',').trim().substring(0, 150);
+
   try {
-    const encoded = encodeURIComponent(prompt.substring(0, 500));
+    const encoded = encodeURIComponent(shortPrompt);
     const url = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${Date.now()}`;
 
     const response = await axios.get(url, {
