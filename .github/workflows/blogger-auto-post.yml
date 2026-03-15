@@ -22,13 +22,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Test token refresh
+      - name: Debug secret lengths
         run: |
-          curl -s -X POST https://oauth2.googleapis.com/token \
-            -d "grant_type=refresh_token" \
-            -d "client_id=$GOOGLE_CLIENT_ID" \
-            -d "client_secret=$GOOGLE_CLIENT_SECRET" \
-            -d "refresh_token=$GOOGLE_REFRESH_TOKEN" | head -c 200
+          echo "CLIENT_ID length: ${#GOOGLE_CLIENT_ID}"
+          echo "CLIENT_SECRET length: ${#GOOGLE_CLIENT_SECRET}"
+          echo "REFRESH_TOKEN length: ${#GOOGLE_REFRESH_TOKEN}"
+          echo "TOKEN prefix: ${GOOGLE_REFRESH_TOKEN:0:6}"
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
