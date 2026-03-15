@@ -2,6 +2,7 @@
 require("dotenv").config({ override: true });
 const { generateArticleKR } = require("./generator-kr");
 const { publishPost } = require("./publisher");
+const { generateImage } = require("./image-generator");
 const keywordsKR = require("./keywords-kr");
 const fs = require("fs");
 
@@ -40,12 +41,16 @@ async function main() {
   const article = await generateArticleKR(keyword);
   console.log(`✅ 글 생성 완료: ${article.title}`);
 
+  console.log("🎨 대표 이미지 생성 중...");
+  const imageResult = await generateImage(keyword, article.title);
+
   console.log("🌐 WordPress 업로드 중...");
-  const result = await publishPost(article, keyword, true);
+  const result = await publishPost(article, keyword, true, imageResult);
 
   if (result.success) {
     console.log(`✅ 포스팅 성공! ID: ${result.postId}`);
     console.log(`🔗 URL: ${result.url}`);
+    if (result.featuredImage) console.log("🖼️  대표 이미지: 설정 완료");
     saveUsedKeyword(keyword);
   } else {
     console.error(`❌ 포스팅 실패:`, result.error);

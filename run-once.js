@@ -2,6 +2,7 @@
 require("dotenv").config();
 const { generateArticle } = require("./generator");
 const { publishPost } = require("./publisher");
+const { generateImage } = require("./image-generator");
 const keywords = require("./keywords");
 const fs = require("fs");
 
@@ -42,14 +43,18 @@ async function main() {
     const article = await generateArticle(keyword);
     console.log("✅ 글 생성 완료:", article.title);
 
+    console.log("🎨 대표 이미지 생성 중...");
+    const imageResult = await generateImage(keyword, article.title);
+
     console.log("📤 WordPress 업로드 중...");
-    const result = await publishPost(article, keyword);
+    const result = await publishPost(article, keyword, false, imageResult);
 
     if (result.success) {
       saveUsedKeyword(keyword);
       console.log("✅ 포스팅 완료!");
       console.log("📂 카테고리:", result.category);
       console.log("🔗 URL:", result.url);
+      if (result.featuredImage) console.log("🖼️  대표 이미지: 설정 완료");
     } else {
       console.error("❌ 포스팅 실패:", result.error);
       process.exit(1);

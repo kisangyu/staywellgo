@@ -139,27 +139,85 @@ async function getCategoryIdXMLRPC(categoryName) {
   }
 }
 
-async function publishPostREST(article, keyword = "", isKorean = false) {
+async function uploadFeaturedImage(imageData, mimeType, title) {
+  try {
+    const imageBuffer = Buffer.from(imageData, 'base64');
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9\uAC00-\uD7A3]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 50);
+    const filename = `${slug}-${Date.now()}.${ext}`;
+
+    const auth = Buffer.from(
+      `${process.env.WP_USERNAME}:${process.env.WP_APP_PASSWORD}`
+    ).toString('base64');
+
+    console.log('📸 WordPress 대표 이미지 업로드 중...');
+    const response = await axios.post(
+      `${process.env.WP_URL}/wp-json/wp/v2/media`,
+      imageBuffer,
+      {
+        headers: {
+          Authorization: `Basic ${auth}`,
+          'Content-Type': mimeType,
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+      }
+    );
+
+    console.log(`✅ 미디어 업로드 완료 (ID: ${response.data.id})`);
+    return response.data.id;
+  } catch (error) {
+    console.error(
+      '❌ 미디어 업로드 오류 (건너뜀):',
+      error.response?.data || error.message
+    );
+    return null;
+  }
+}
+
+async function publishPostREST(article, keyword = "", isKorean = false, imageResult = null) {
   const categoryName = isKorean
     ? getCategoryNameKR(keyword || article.title)
     : getCategoryName(keyword || article.title);
   console.log(`📂 카테고리: ${categoryName}`);
   const categoryId = await getCategoryIdREST(categoryName);
 
+  // 대표 이미지 업로드
+  let featuredMediaId = null;
+  if (imageResult) {
+    featuredMediaId = await uploadFeaturedImage(
+      imageResult.data,
+      imageResult.mimeType,
+      article.title
+    );
+  }
+
   const auth = Buffer.from(`${process.env.WP_USERNAME}:${process.env.WP_APP_PASSWORD}`).toString("base64");
+
+  const postBody = {
+    title: article.title,
+    content: article.content,
+    status: "publish",
+    excerpt: article.meta,
+    categories: categoryId ? [categoryId] : [],
+    meta: {
+      _yoast_wpseo_metadesc: article.meta || "",
+      _yoast_wpseo_focuskw: keyword || "",
+    },
+  };
+
+  if (featuredMediaId) {
+    postBody.featured_media = featuredMediaId;
+  }
+
   const response = await axios.post(
     `${process.env.WP_URL}/wp-json/wp/v2/posts`,
-    {
-      title: article.title,
-      content: article.content,
-      status: "publish",
-      excerpt: article.meta,
-      categories: categoryId ? [categoryId] : [],
-      meta: {
-        _yoast_wpseo_metadesc: article.meta || "",
-        _yoast_wpseo_focuskw: keyword || "",
-      },
-    },
+    postBody,
     { headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" } }
   );
 
@@ -168,6 +226,7 @@ async function publishPostREST(article, keyword = "", isKorean = false) {
     postId: response.data.id,
     category: categoryName,
     url: response.data.link,
+    featuredImage: featuredMediaId !== null,
   };
 }
 
@@ -209,18 +268,28 @@ async function publishPostXMLRPC(article, keyword = "") {
   }
 }
 
-async function publishPost(article, keyword = "", isKorean = false) {
+async function publishPost(article, keyword = "", isKorean = false, imageResult = null) {
+  // 항상 REST API 먼저 시도 (대표 이미지 지원)
   try {
-    if (isAppPassword()) {
-      console.log("🔑 REST API 방식으로 포스팅...");
-      return await publishPostREST(article, keyword, isKorean);
-    } else {
-      console.log("🔑 XML-RPC 방식으로 포스팅...");
-      return await publishPostXMLRPC(article, keyword);
+    console.log("🔑 REST API 방식으로 포스팅...");
+    return await publishPostREST(article, keyword, isKorean, imageResult);
+  } catch (restError) {
+    const status = restError.response?.status;
+
+    // 401/403 인증 오류 → XML-RPC 자동 폴백
+    if (status === 401 || status === 403) {
+      console.warn(`⚠️  REST API 인증 오류 (${status}) → XML-RPC로 자동 재시도...`);
+      console.warn("   ✔ Application Password에 공백 포함 여부와 WP_USERNAME이 이메일이 아닌 로그인 아이디인지 확인하세요.");
+      try {
+        return await publishPostXMLRPC(article, keyword);
+      } catch (xmlError) {
+        console.error("❌ XML-RPC도 실패:", xmlError.response?.data || xmlError.message);
+        return { success: false, error: xmlError.response?.data || xmlError.message };
+      }
     }
-  } catch (error) {
-    console.error("포스팅 오류:", error.response?.data || error.message);
-    return { success: false, error: error.response?.data || error.message };
+
+    console.error("❌ 포스팅 오류:", restError.response?.data || restError.message);
+    return { success: false, error: restError.response?.data || restError.message };
   }
 }
 
@@ -251,4 +320,4 @@ async function testConnection() {
   }
 }
 
-module.exports = { publishPost, testConnection, getCategoryName };
+module.exports = { publishPost, testConnection, getCategoryName, uploadFeaturedImage };

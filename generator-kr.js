@@ -5,52 +5,55 @@ require("dotenv").config({ override: true });
 // 쿠팡 파트너스 ID (나중에 .env에서 불러옴)
 const COUPANG_ID = process.env.COUPANG_PARTNER_ID || "";
 
-// 키워드 → 쿠팡 검색어 매핑
-const KEYWORD_PRODUCT_MAP = {
-  "혈압 낮추는 음식 추천": "혈압 영양제",
-  "다이어트 식단 일주일 계획": "다이어트 식품",
-  "면역력 높이는 음식": "면역력 영양제",
-  "콜레스테롤 낮추는 방법": "오메가3",
-  "공복 혈당 낮추는 식품": "혈당 영양제",
-  "장 건강에 좋은 음식": "유산균",
-  "빈혈에 좋은 음식 추천": "철분 영양제",
-  "집에서 할 수 있는 다이어트 운동": "홈트레이닝 용품",
-  "숙면을 위한 꿀팁": "수면 영양제",
-  "피로 해소에 좋은 방법": "피로회복 영양제",
-  "두통 빨리 낫는 법": "두통약",
-  "목 결림 푸는 스트레칭": "목 마사지기",
-  "허리 통증 완화 운동": "허리 보호대",
-  "눈 피로 풀어주는 방법": "눈 영양제",
-  "유산균 추천 제품": "유산균",
-  "비타민D 추천 영양제": "비타민D",
-  "오메가3 추천 제품": "오메가3",
-  "마그네슘 효능과 추천": "마그네슘",
-  "단백질 보충제 추천": "단백질 보충제",
-  "멀티비타민 추천": "멀티비타민",
-  "홍삼 효능과 추천 제품": "홍삼",
-  "서울 맛집 추천": "여행 가이드",
-  "제주도 여행 코스": "여행 용품",
-  "국내 여행지 추천": "캐리어",
-  "가성비 숙소 예약 방법": "여행 용품",
-  "가성비 무선 이어폰 추천": "무선 이어폰",
-  "스마트워치 추천": "스마트워치",
-  "공기청정기 추천": "공기청정기",
-  "안마기 추천": "안마기",
-};
+// 주제 키워드 → 쿠팡 검색어 (부분 매칭, 우선순위 순서)
+const TOPIC_PRODUCT_MAP = [
+  { topics: ["마그네슘"],                          product: "마그네슘 영양제" },
+  { topics: ["오메가3", "오메가-3"],               product: "오메가3" },
+  { topics: ["비타민D", "비타민 D"],               product: "비타민D" },
+  { topics: ["유산균", "프로바이오틱"],             product: "유산균" },
+  { topics: ["홍삼", "인삼"],                       product: "홍삼" },
+  { topics: ["멀티비타민", "종합비타민"],           product: "멀티비타민" },
+  { topics: ["단백질", "프로틴"],                   product: "단백질 보충제" },
+  { topics: ["철분", "빈혈"],                       product: "철분 영양제" },
+  { topics: ["혈당", "당뇨"],                       product: "혈당 영양제" },
+  { topics: ["혈압"],                               product: "혈압 영양제" },
+  { topics: ["콜레스테롤"],                         product: "오메가3" },
+  { topics: ["면역력", "면역"],                     product: "면역력 영양제" },
+  { topics: ["수면", "숙면", "불면"],               product: "수면 영양제" },
+  { topics: ["피로", "무기력", "피곤"],             product: "피로회복 영양제" },
+  { topics: ["스트레스", "불안", "긴장"],           product: "스트레스 영양제" },
+  { topics: ["다이어트", "체중", "살", "비만"],     product: "다이어트 식품" },
+  { topics: ["장 건강", "장건강", "장"],            product: "유산균" },
+  { topics: ["두통", "편두통"],                     product: "두통약" },
+  { topics: ["눈 피로", "눈", "시력"],              product: "눈 영양제" },
+  { topics: ["목 결림", "목", "어깨"],              product: "목 마사지기" },
+  { topics: ["허리", "요통", "척추"],               product: "허리 보호대" },
+  { topics: ["관절", "무릎", "연골"],               product: "관절 영양제" },
+  { topics: ["탈모", "머리카락"],                   product: "탈모 영양제" },
+  { topics: ["피부", "미백", "노화"],               product: "피부 영양제" },
+  { topics: ["운동", "트레이닝", "헬스"],           product: "홈트레이닝 용품" },
+  { topics: ["안마", "마사지"],                     product: "안마기" },
+  { topics: ["이어폰", "헤드폰"],                   product: "무선 이어폰" },
+  { topics: ["스마트워치", "애플워치"],             product: "스마트워치" },
+  { topics: ["공기청정기"],                         product: "공기청정기" },
+  { topics: ["여행", "제주", "서울", "맛집"],       product: "여행 용품" },
+];
 
-// 키워드에서 쿠팡 검색어 추출
+// 키워드 부분 매칭으로 쿠팡 검색어 추출
 function getProductSearchTerm(keyword) {
-  // 매핑 테이블에 있으면 사용
-  if (KEYWORD_PRODUCT_MAP[keyword]) {
-    return KEYWORD_PRODUCT_MAP[keyword];
+  for (const { topics, product } of TOPIC_PRODUCT_MAP) {
+    if (topics.some((topic) => keyword.includes(topic))) {
+      return product;
+    }
   }
-  // 없으면 키워드에서 불필요한 단어 제거 후 검색어로 사용
+  // 폴백: 조사·동사 제거 후 핵심어만 남기기
   return keyword
-    .replace(/추천$/, "")
-    .replace(/방법$/, "")
-    .replace(/하는 법$/, "")
-    .replace(/꿀팁$/, "")
-    .replace(/효능과/, "")
+    .replace(/추천$/, "").replace(/방법$/, "")
+    .replace(/하는 법$/, "").replace(/꿀팁$/, "")
+    .replace(/효능과\s*/, "").replace(/에 좋은/, "")
+    .replace(/낮추는\s*/, "").replace(/높이는\s*/, "")
+    .replace(/해소에 좋은/, "").replace(/풀어주는/, "")
+    .replace(/위한/, "").replace(/관련/, "")
     .trim();
 }
 
@@ -80,7 +83,7 @@ async function generateArticleKR(keyword) {
       "https://api.groq.com/openai/v1/chat/completions",
       {
         model: "llama-3.3-70b-versatile",
-        max_tokens: 3000,
+        max_tokens: 4000,
         messages: [
           {
             role: "user",
@@ -105,21 +108,30 @@ async function generateArticleKR(keyword) {
 }
 
 function buildPromptKR(keyword) {
-  return `다음 주제로 SEO에 최적화된 한국어 블로그 글을 작성해주세요: "${keyword}"
+  return `You must write ONLY in Korean (한국어). Do NOT use Japanese (hiragana, katakana, kanji), Chinese characters, or any other language. Every single word must be Korean.
 
-아래 형식으로 작성하세요:
-TITLE: [클릭을 유도하는 제목]
-META: [155자 이내의 메타 설명]
-CONTENT: [HTML 형식의 본문 내용]
+당신은 yukisang.pro에 글을 쓰는 10년 경력의 한국어 웰니스 블로거입니다. 구글 에드센스 승인 기준과 E-E-A-T를 철저히 준수하여 다음 주제로 블로그 글을 작성하세요: "${keyword}"
 
-요구사항:
-- 1500~2000자 분량
-- H2, H3 소제목 사용
-- 실용적인 정보와 팁 포함
-- 자연스러운 한국어 문체
-- 마지막에 자주 묻는 질문(FAQ) 섹션 포함
-- 제품 추천이 필요한 경우 "추천 제품" 섹션 추가
-- 독자에게 도움이 되는 정보 위주로 작성`;
+⚠️ 중요: 반드시 순수 한국어만 사용하세요. 일본어(히라가나, 가타카나), 한자, 영어 단어 절대 사용 금지. 예) "ほうれん草" → "시금치", "くるみ" → "호두", "マグネシウム" → "마그네슘"으로 작성.
+
+아래 형식으로 정확히 작성하세요 (설명 없이 바로 시작):
+TITLE: [클릭률 높은 SEO 제목 - 숫자 또는 의문형 포함, 30자 이내]
+META: [150자 이내의 메타 설명, 주요 키워드 포함]
+CONTENT: [아래 요구사항에 맞는 HTML 본문]
+
+본문 요구사항:
+- 분량: 2000~2500자
+- 언어: 100% 한국어. 일본어, 한자, 외국어 절대 사용 금지
+- 구조: 공감형 도입부 → H2/H3 소제목 5~7개 → 결론(CTA) → FAQ
+- HTML 태그: <h2>, <h3>, <ul>/<ol>, <strong> 적극 사용
+- 문체: 친근하고 대화체, 1인칭 ("저도 처음엔...", "실제로 해봤는데...", "제 경험상...")
+- 개인 경험 2~3개를 자연스럽게 녹여서 작성 (예: "저는 예전에 이걸로 고생했는데...", "주변에서도 많이 물어보는 질문이라...")
+- 출처/연구 1개 이상 자연스럽게 언급 (예: "2023년 국내 연구에 따르면...", "한국영양학회 가이드라인에서...")
+- 글 도입부 직후 아래 면책 조항 div를 반드시 포함:
+  <div style="background:#fff8e1;border-left:4px solid #ffc107;padding:12px 16px;margin:20px 0;border-radius:4px;font-size:14px;color:#666;"><strong>주의사항:</strong> 이 글은 정보 제공 목적으로 작성되었으며 의학적 조언이 아닙니다. 건강 관련 결정은 반드시 전문 의료인과 상담하세요.</div>
+- AI가 쓴 티 나지 않게: 문장 길이 다양하게, 구어체 표현, 자연스러운 감정 표현 포함
+- FAQ 섹션: <h2>자주 묻는 질문</h2> 후 <h3>으로 질문 5~6개 (상세 답변 포함)
+- 결론: 독자를 격려하는 2~3문장 마무리`;
 }
 
 function parseArticleKR(text, keyword) {
