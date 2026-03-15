@@ -67,7 +67,7 @@ async function generateImage(keyword, title) {
 
   try {
     const response = await axios.post(
-      'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
+      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
       { inputs: prompt.substring(0, 500) },
       {
         headers: {
