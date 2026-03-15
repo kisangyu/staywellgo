@@ -67,10 +67,13 @@ async function generateImage(keyword, title) {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${process.env.GEMINI_API_KEY}`,
       {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ['IMAGE'] },
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: '16:9',
+        },
       },
       {
         headers: { 'Content-Type': 'application/json' },
@@ -78,20 +81,16 @@ async function generateImage(keyword, title) {
       }
     );
 
-    const parts = response.data?.candidates?.[0]?.content?.parts;
-    const imagePart = parts?.find(
-      (p) => p.inlineData?.mimeType?.startsWith('image/')
-    );
-
-    if (!imagePart) {
-      console.log('⚠️  Gemini 이미지 데이터 없음 - 포스팅은 계속 진행');
+    const prediction = response.data?.predictions?.[0];
+    if (!prediction?.bytesBase64Encoded) {
+      console.log('⚠️  Imagen 이미지 데이터 없음 - 포스팅은 계속 진행');
       return null;
     }
 
-    const mimeType = imagePart.inlineData.mimeType;
+    const mimeType = prediction.mimeType || 'image/jpeg';
     console.log(`✅ 이미지 생성 완료 (${mimeType})`);
     return {
-      data: imagePart.inlineData.data, // base64
+      data: prediction.bytesBase64Encoded,
       mimeType,
     };
   } catch (error) {
