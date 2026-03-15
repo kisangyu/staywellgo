@@ -42,9 +42,9 @@ async function refreshAccessToken() {
       "https://oauth2.googleapis.com/token",
       new URLSearchParams({
         grant_type: "refresh_token",
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
+        client_id: (process.env.GOOGLE_CLIENT_ID || "").trim(),
+        client_secret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
+        refresh_token: (process.env.GOOGLE_REFRESH_TOKEN || "").trim(),
       }).toString(),
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
