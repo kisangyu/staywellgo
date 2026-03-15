@@ -7,6 +7,7 @@ const keywordsKR = require("./keywords-kr");
 const fs = require("fs");
 
 const USED_FILE = "used_keywords_kr.json";
+const GOLDEN_FILE = "golden-keywords-kr.json";
 
 function getUsedKeywords() {
   if (fs.existsSync(USED_FILE)) {
@@ -23,10 +24,22 @@ function saveUsedKeyword(keyword) {
 
 function getNextKeyword() {
   const used = getUsedKeywords();
-  const available = keywordsKR.filter((k) => !used.includes(k));
+
+  // 황금 키워드 파일이 있으면 우선 사용
+  let pool = keywordsKR;
+  if (fs.existsSync(GOLDEN_FILE)) {
+    const golden = JSON.parse(fs.readFileSync(GOLDEN_FILE, "utf8"));
+    const goldenList = golden.keywords || [];
+    if (goldenList.length > 0) {
+      pool = [...goldenList, ...keywordsKR]; // 황금 키워드 앞에 배치
+      console.log(`💎 황금 키워드 풀 사용 중 (${goldenList.length}개)`);
+    }
+  }
+
+  const available = pool.filter((k) => !used.includes(k));
   if (available.length === 0) {
     fs.writeFileSync(USED_FILE, JSON.stringify([], null, 2));
-    return keywordsKR[0];
+    return pool[0];
   }
   return available[Math.floor(Math.random() * available.length)];
 }

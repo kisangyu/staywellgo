@@ -1,0 +1,42 @@
+name: Keyword Miner
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"  # 매주 일요일 자정 실행
+  workflow_dispatch:      # 수동 실행 가능
+
+jobs:
+  mine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run keyword miner
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: node keyword-miner.js
+
+      - name: Save golden keywords
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-keywords
+          path: |
+            golden-keywords-kr.json
+            golden-keywords-en.json
+
+      - name: Commit keywords to repo
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add golden-keywords-kr.json golden-keywords-en.json || true
+          git diff --staged --quiet || git commit -m "chore: 황금 키워드 업데이트 $(date '+%Y-%m-%d')"
+          git push || true
