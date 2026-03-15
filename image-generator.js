@@ -57,24 +57,31 @@ function buildImagePrompt(keyword, title) {
 }
 
 async function generateImage(keyword, title) {
+  if (!process.env.HF_TOKEN) {
+    console.log('⚠️  HF_TOKEN 없음 - 이미지 생성 건너뜀');
+    return null;
+  }
+
   const prompt = buildImagePrompt(keyword, title);
   console.log(`🎨 이미지 생성 중: "${title.substring(0, 50)}..."`);
 
-  // 프롬프트 핵심어만 추출 (첫 번째 쉼표까지)
-  const shortPrompt = prompt.split(',').slice(0, 2).join(',').trim().substring(0, 150);
-
   try {
-    const encoded = encodeURIComponent(shortPrompt);
-    const url = `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&nologo=true&seed=${Date.now()}`;
+    const response = await axios.post(
+      'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
+      { inputs: prompt.substring(0, 500) },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.HF_TOKEN}`,
+          'Content-Type': 'application/json',
+          Accept: 'image/jpeg',
+        },
+        responseType: 'arraybuffer',
+        timeout: 120000,
+      }
+    );
 
-    const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      timeout: 120000,
-    });
-
-    const mimeType = response.headers['content-type']?.split(';')[0] || 'image/jpeg';
+    const mimeType = 'image/jpeg';
     const data = Buffer.from(response.data).toString('base64');
-
     console.log(`✅ 이미지 생성 완료 (${mimeType})`);
     return { data, mimeType };
   } catch (error) {
