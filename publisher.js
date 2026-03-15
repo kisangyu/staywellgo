@@ -76,6 +76,9 @@ function buildXmlRpcRequest(method, params) {
       const items = val.map((v) => `<value>${encodeValue(v)}</value>`).join("");
       return `<value><array><data>${items}</data></array></value>`;
     }
+    if (val && typeof val === "object" && val.__type === "base64") {
+      return `<value><base64>${val.data}</base64></value>`;
+    }
     if (typeof val === "object") {
       const members = Object.entries(val)
         .map(([k, v]) => `<member><name>${k}</name>${encodeValue(v)}</member>`)
@@ -225,10 +228,52 @@ async function publishPostREST(article, keyword = "", isKorean = false, imageRes
   };
 }
 
-async function publishPostXMLRPC(article, keyword = "") {
+async function uploadImageXMLRPC(imageData, mimeType) {
+  try {
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
+    const filename = `post-${Date.now()}.${ext}`;
+
+    const xml = buildXmlRpcRequest("wp.uploadFile", [
+      1,
+      process.env.WP_USERNAME,
+      process.env.WP_APP_PASSWORD,
+      {
+        name: filename,
+        type: mimeType,
+        bits: { __type: "base64", data: imageData },
+        overwrite: false,
+      },
+    ]);
+
+    const response = await axios.post(
+      `${process.env.WP_URL}/xmlrpc.php`,
+      xml,
+      { headers: { "Content-Type": "text/xml" } }
+    );
+
+    const idMatch = response.data.match(/<name>attachment_id<\/name>[\s\S]*?<string>(\d+)<\/string>/);
+    if (idMatch) {
+      console.log(`✅ 미디어 업로드 완료 (ID: ${idMatch[1]})`);
+      return parseInt(idMatch[1]);
+    }
+    return null;
+  } catch (error) {
+    console.error("❌ XML-RPC 이미지 업로드 오류:", error.message);
+    return null;
+  }
+}
+
+async function publishPostXMLRPC(article, keyword = "", imageResult = null) {
   const categoryName = getCategoryName(keyword || article.title);
   console.log(`📂 카테고리: ${categoryName}`);
   const categoryId = await getCategoryIdXMLRPC(categoryName);
+
+  // XML-RPC로 이미지 업로드
+  let mediaId = null;
+  if (imageResult) {
+    console.log("📸 WordPress 대표 이미지 업로드 중...");
+    mediaId = await uploadImageXMLRPC(imageResult.data, imageResult.mimeType);
+  }
 
   const postData = {
     post_title: article.title,
@@ -240,6 +285,10 @@ async function publishPostXMLRPC(article, keyword = "") {
 
   if (categoryId) {
     postData.terms = { category: [categoryId] };
+  }
+
+  if (mediaId) {
+    postData.post_thumbnail = mediaId;
   }
 
   const xml = buildXmlRpcRequest("wp.newPost", [
@@ -276,7 +325,7 @@ async function publishPost(article, keyword = "", isKorean = false, imageResult 
       console.warn(`⚠️  REST API 인증 오류 (${status}) → XML-RPC로 자동 재시도...`);
       console.warn("   ✔ Application Password에 공백 포함 여부와 WP_USERNAME이 이메일이 아닌 로그인 아이디인지 확인하세요.");
       try {
-        return await publishPostXMLRPC(article, keyword);
+        return await publishPostXMLRPC(article, keyword, imageResult);
       } catch (xmlError) {
         console.error("❌ XML-RPC도 실패:", xmlError.response?.data || xmlError.message);
         return { success: false, error: xmlError.response?.data || xmlError.message };
