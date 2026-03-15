@@ -44,7 +44,7 @@ async function refreshAccessToken() {
         grant_type: "refresh_token",
         client_id: (process.env.GOOGLE_CLIENT_ID || "").trim(),
         client_secret: (process.env.GOOGLE_CLIENT_SECRET || "").trim(),
-        refresh_token: (process.env.GOOGLE_REFRESH_TOKEN || "").trim(),
+        refresh_token: (process.env.GOOGLE_REFRESH_TOKEN || "").replace(/\s+/g, ""),
       }).toString(),
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
