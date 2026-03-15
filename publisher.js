@@ -143,12 +143,7 @@ async function uploadFeaturedImage(imageData, mimeType, title) {
   try {
     const imageBuffer = Buffer.from(imageData, 'base64');
     const ext = mimeType.includes('png') ? 'png' : 'jpg';
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9\uAC00-\uD7A3]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 50);
-    const filename = `${slug}-${Date.now()}.${ext}`;
+    const filename = `post-${Date.now()}.${ext}`;
 
     const auth = Buffer.from(
       `${process.env.WP_USERNAME}:${process.env.WP_APP_PASSWORD}`
